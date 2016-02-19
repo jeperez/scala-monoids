@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<!--
+  Copyright 2010 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Original slides: Marcin Wichary (mwichary@google.com)
+  Modifications: Ernest Delgado (ernestd@google.com)
+                 Alex Russell (slightlyoff@chromium.org)
+
+  landslide modifications: Adam Zapletal (adamzap@gmail.com)
+                           Nicolas Perriault (nperriault@gmail.com)
+-->
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>None</title>
+    <!-- Styles -->
+    
+    <link rel="stylesheet" media="print" href="theme/css/print.css">
+    <link rel="stylesheet" media="screen, projection" href="theme/css/screen.css">
+    
+    
+    <!-- /Styles -->
+    <!-- Javascripts -->
+    
+    <script type="text/javascript" src="theme/js/slides.js"></script>
+    
+    
+    <!-- /Javascripts -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        extensions: ["tex2jax.js"],
+        jax: ["input/TeX", "output/HTML-CSS"],
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+          displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+          processEscapes: true
+        },
+        "HTML-CSS": { availableFonts: ["TeX"] }
+      });
+    </script>
+    <script type="text/javascript"
+        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+</head>
+<body style="!important;">
+  <div id="blank"></div>
+  <div class="presentation">
+    <div id="current_presenter_notes">
+      <div id="presenter_note"></div>
+    </div>
+    <div class="slides">
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><div style="border-radius: 10px; background: #EEEEEE; padding: 20px; text-align: center; font-size: 1.5em">
+  <big><b>Monoids and Terascale EDA</b></big> </br>
+  </br>
+
+  <code>chris@datascience.com</code>
+  <br/>
+  <br/>
+
+</div></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+              <p>Statistical analysis and mining of huge multi-terabyte data sets is a common task nowadays, especially in the areas like App analytics and Internet advertising. Analysis of such large data sets often requires powerful distributed data stores and heavy data processing with techniques like MapReduce.</p>
+<p>This approach often leads to heavyweight high-latency analytical processes and poor applicability to realtime use cases. On the other hand, when one is interested only in simple additive metrics like total page views or average price of conversion, it is obvious that raw data can be efficiently summarized, for example, on a daily basis or using simple in-stream counters.  Computation of more advanced metrics like a number of unique visitor or most frequent items is more challenging and requires a lot of resources if implemented straightforwardly.</p>
+<p>This talk provides an overview of probabilistic data structures that allow one to estimate these and many other metrics and trade precision of the estimations for the memory consumption. These data structures can be used both as temporary data accumulators in query processing procedures and, perhaps more important, as a compact replacement of raw data in stream-based computing.</p>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              1/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Monoids</h1></header>
+            
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              2/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Associativity</h1></header>
+            
+            
+            <section><p>For all $ a, b, c \in M $ we have:
+$$
+$$
+$$
+(a + b) + c = a + (b + c)
+$$</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              3/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            
+            <section><p>Associativity allows for <code>MapReduce</code> parallelism in computing.</p>
+<p>$$
+(a + b) + (c + d) + (e + f) + (g + h)
+$$
+$$
+(a + b + c + d) + (e + f + g + h)
+$$
+$$
+(a + b + c + d + e + f + g + h)
+$$</p>
+<p class="notes">Lack of associativity increases latency exponentially.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              4/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Identity</h1></header>
+            
+            
+            <section><p>There exists an element $0$ such that for all $a \in M$
+$$
+$$
+$$
+0 + a = a + 0 = a
+$$</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              5/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p>Identity allows for noops and null values in the data.
+$$
+$$
+$$
+0 + a + 0 + 0 + b + 0 + c + 0 + 0 = a + b + c
+$$</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              6/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Basic Monoids</h1></header>
+            
+            
+            <section><ul>
+<li>addition, multiplication, concatenation, etc</li>
+<li>set union / intersection</li>
+<li>hashmaps</li>
+<li>Boolean AND / OR</li>
+<li>min / max</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              7/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">data2</span> <span class="k">=</span>    <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">data2</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">data1</span> <span class="k">=</span>    <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="mi">7</span><span class="o">)</span>
+<span class="n">data1</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="mi">7</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">data1</span> <span class="o">+</span> <span class="n">data2</span>
+<span class="n">error</span><span class="k">:</span> <span class="k">type</span> <span class="kt">mismatch</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              8/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code has_notes">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">com.twitter.algebird.Operators._</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">)</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">*</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="mi">5</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="mi">6</span><span class="o">)</span>
+</pre></div>
+
+<p class="notes">Note the effect of the multiplication</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              9/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="nc">Set</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span><span class="mi">3</span><span class="o">),</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">Set</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span> <span class="o">+</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">Set</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span><span class="mi">2</span><span class="o">,</span><span class="mi">3</span><span class="o">))</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Set</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="nc">Set</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">),</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">Set</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              10/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            <header><h1>What about a mean average?</h1></header>
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">avg</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">)</span> <span class="o">!=</span> <span class="n">avg</span><span class="o">(</span><span class="mi">0</span> <span class="o">,</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span> <span class="o">+</span> <span class="n">avg</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">)</span>
+<span class="mi">2</span> <span class="o">!=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mf">3.5</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              11/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            <header><h1>Use a Product Monoid</h1></header>
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">a</span><span class="o">.</span><span class="n">cnt</span><span class="o">,</span> <span class="n">a</span><span class="o">.</span><span class="n">avg</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="n">b</span><span class="o">.</span><span class="n">cnt</span><span class="o">,</span> <span class="n">b</span><span class="o">.</span><span class="n">avg</span><span class="o">)</span> <span class="k">=</span>
+  <span class="o">(</span> <span class="n">a</span><span class="o">.</span><span class="n">cnt</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">cnt</span><span class="o">,</span> <span class="o">(</span><span class="n">a</span><span class="o">.</span><span class="n">cnt</span><span class="o">*</span><span class="n">a</span><span class="o">.</span><span class="n">avg</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">cnt</span><span class="o">*</span><span class="n">b</span><span class="o">.</span><span class="n">avg</span><span class="o">)/(</span><span class="n">a</span><span class="o">.</span><span class="n">cnt</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">cnt</span><span class="o">))</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              12/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">AveragedValue</span><span class="o">(</span><span class="mi">3</span><span class="o">,(</span><span class="mi">0</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="mi">2</span><span class="o">)/</span><span class="mf">3.0</span><span class="o">)</span> <span class="o">+</span> <span class="nc">AveragedValue</span><span class="o">(</span><span class="mi">2</span><span class="o">,(</span><span class="mi">3</span><span class="o">+</span><span class="mi">4</span><span class="o">)/</span><span class="mf">2.0</span><span class="o">)</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">AveragedValue</span> <span class="o">=</span> <span class="nc">AveragedValue</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span><span class="mf">2.0</span><span class="o">)</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              13/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            <header><h1>Product Monoids</h1></header>
+            
+            
+            <section><ul>
+<li>mean + higher moments (variance, skewness etc)</li>
+<li>harmonic mean</li>
+<li>median (Q-Digest)</li>
+<li>mode (Count-min sketch)</li>
+<li>probabilistic data structures (HyperLogLog, Bloom Filters etc)</li>
+</ul>
+<p class="notes">Hashing vs Sampling</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              14/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide imageslide whiteheading">
+          <div class="inner">
+            
+            
+            <section><p><img alt="" src="img/monoids-everywhere.png" /></p>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              15/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Algebird</h1></header>
+            
+            
+            <section><p>An Abstract Algebra library from Twitter for solving large "counting" problems</p>
+<ul>
+<li>Abstract algebraic types (e.g. semigroups, monoids etc)</li>
+<li>Monoid interfaces for standard Scala types</li>
+<li>Bloom Filter, HyperLogLog, Count-min Sketch, ARIMA, Q-Digests etc</li>
+<li>Aggregation of complex data structures with Spark can be expressed as a simple MapReduce: <code>rdd.map(toMonoid(_)).reduce(_+_)</code></li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              16/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            <header><h1>Bloom Filter</h1></header>
+            
+            
+            <section><p><strong>Problem</strong>: Show new Tinder profiles without repeating profiles that have already been swiped on.</p>
+<p>Tinder has over 50 million active monthly users averaging over 1.6 billion swipes per day.</p>
+<p>Storing the swiped graph as a <code>Set[(User,Profile)]</code> or a <code>Map[User,Set[Profile]]</code> would be prohibitively expensive.</p>
+<p class="notes">The Bloom Filter is probably the most famous and widely used probabilistic data structure. It is widely used as a preliminary probabilistic test that allows one to reduce a number of exact checks.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              17/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><ul>
+<li>Like an approximate <code>Set</code></li>
+<li><code>Bloom.contains(Profile) =&gt; Maybe | No</code></li>
+<li>Precision &lt; 1.0 (P(false positive) &gt; 0)</li>
+<li>Recall = 1.0 (P(false negative = 0))</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              18/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            
+            <section><p>Under the hood: k hashes into an m-bit array.</p>
+<p><img alt="" src="img/bloom-filter.png" /></p>
+<p class="notes">We can tune Precision with m and k.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              19/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Precision Tuning</h1></header>
+            
+            
+            <section><p>After $n$ insertions, the probability that a given bit is not set to 1 by any of the $k$ hash functions is</p>
+<p>$$
+\left(1-\frac{1}{m}\right)^{kn}
+$$</p>
+<p>Therefore the probability of a false positive is:</p>
+<p>$$
+\left(1-\left[1-\frac{1}{m}\right]^{kn}\right)^k \approx \left( 1-e^{-kn/m} \right)^k
+$$</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              20/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p>The false positive probability p as a function of number of elements $n$ in the filter and the filter size $m$, assuming an optimal number of hash functions $k= (m/n) \ln 2$ (<a href="https://en.wikipedia.org/wiki/Bloom_filter">Wikipedia</a>)</p>
+<p><img alt="" src="img/bloom-filter-tuning.png" /></p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              21/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Bloom Filters are Monoids</h1></header>
+            
+            
+            <section><p><strong>Write:</strong>  <code>OR</code> at each location
+$$
+$$
+<strong>Read:</strong> <code>AND</code> at each location</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              22/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="k">val</span> <span class="nc">NUM_HASHES</span> <span class="k">=</span> <span class="mi">6</span>
+<span class="k">val</span> <span class="nc">WIDTH</span> <span class="k">=</span> <span class="mi">32</span>
+<span class="k">val</span> <span class="nc">SEED</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="k">val</span> <span class="n">bfMonoid</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">BloomFilterMonoid</span><span class="o">(</span><span class="nc">NUM_HASHES</span><span class="o">,</span> <span class="nc">WIDTH</span><span class="o">,</span> <span class="nc">SEED</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">bf1</span> <span class="k">=</span> <span class="n">bfMonoid</span><span class="o">.</span><span class="n">create</span><span class="o">(</span><span class="s">&quot;1&quot;</span><span class="o">,</span> <span class="s">&quot;2&quot;</span><span class="o">,</span> <span class="s">&quot;3&quot;</span><span class="o">,</span> <span class="s">&quot;4&quot;</span><span class="o">,</span> <span class="s">&quot;100&quot;</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">bf2</span> <span class="k">=</span> <span class="n">bfMonoid</span><span class="o">.</span><span class="n">create</span><span class="o">(</span><span class="s">&quot;4&quot;</span><span class="o">,</span> <span class="s">&quot;5&quot;</span><span class="o">,</span> <span class="s">&quot;100&quot;</span><span class="o">,</span> <span class="s">&quot;110&quot;</span><span class="o">)</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              23/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">bf1</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="s">&quot;1&quot;</span><span class="o">)</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">ApproximateBoolean</span> <span class="o">=</span> <span class="nc">ApproximateBoolean</span><span class="o">(</span><span class="kc">true</span><span class="o">,</span><span class="mf">0.92903497</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">bf1</span> <span class="o">++</span> <span class="n">bf2</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">com.twitter.algebird.BF</span> <span class="o">=</span> <span class="nc">BFSparse</span><span class="o">(...)</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              24/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>HyperLogLog</h1></header>
+            
+            
+            <section><p><strong>Problem</strong>: Count the number of unique Tinder users that have seen a profile.</p>
+<p>Again, Tinder users swipe through 1.6 billion profiles per day.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              25/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><ul>
+<li>Like an approximate <code>Set</code></li>
+<li><code>HLL.size =&gt; Approx[Number]</code></li>
+<li>We know the distribution on the error</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              26/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1><a href="http://content.research.neustar.biz/blog/hll.html">Link</a></h1></header>
+            
+            
+            <section><p><img alt="" src="img/hyperloglog.png" /></p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              27/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p><strong>Write:</strong> <code>MAX</code> at each location
+$$
+$$
+<strong>Read:</strong> Harmonic mean over all cells</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              28/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">HyperLogLog._</span>
+<span class="k">def</span> <span class="n">uniqueVals</span><span class="o">(</span><span class="n">sc</span><span class="k">:</span><span class="kt">SparkContext</span><span class="o">,</span> <span class="n">csv</span><span class="k">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">col</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">hll</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HyperLogLogMonoid</span><span class="o">(</span><span class="mi">12</span><span class="o">)</span> <span class="c1">// 2^12 bits</span>
+  <span class="k">val</span> <span class="n">rdd</span><span class="k">:</span> <span class="kt">RDD</span><span class="o">[</span><span class="kt">Row</span><span class="o">]</span> <span class="k">=</span> <span class="nc">SparkUtils</span><span class="o">.</span><span class="n">rddFromCSVFile</span><span class="o">(</span><span class="n">sc</span><span class="o">,</span> <span class="n">csv</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">approxCount</span> <span class="k">=</span> <span class="n">rdd</span>
+    <span class="o">.</span><span class="n">map</span> <span class="o">{</span><span class="n">r</span> <span class="k">=&gt;</span> <span class="n">r</span><span class="o">(</span><span class="n">col</span><span class="o">).</span><span class="n">toString</span><span class="o">}</span>
+    <span class="o">.</span><span class="n">map</span> <span class="o">{</span><span class="n">c</span> <span class="k">=&gt;</span> <span class="n">hll</span><span class="o">(</span><span class="n">c</span><span class="o">.</span><span class="n">hashCode</span><span class="o">)}</span> <span class="c1">// hll defines zero and plus</span>
+    <span class="o">.</span><span class="n">reduce</span><span class="o">(</span><span class="k">_</span> <span class="o">+</span> <span class="k">_</span><span class="o">)</span>
+  <span class="n">approxCount</span><span class="o">.</span><span class="n">estimatedSize</span><span class="o">.</span><span class="n">toLong</span>
+<span class="o">}</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              29/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            <header><h1>Count-min Sketch</h1></header>
+            
+            
+            <section><p><strong>Problem</strong>: How many swipes did each active user make on each hour this month?</p>
+<p>50,000,000 users * 24 hours / day * 31 days / month = 37 billion <code>(user, hour)</code> pairs to aggregate.</p>
+<p class="notes">Suppose there is a set of values with duplicates, it is required to estimate frequency (a number of duplicates) for each value. Estimations for relatively rare values can be imprecise, but frequent values and their absolute frequencies should be determined accurately.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              30/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_notes">
+          <div class="inner">
+            
+            
+            <section><ul>
+<li>Like an approximate <code>Map[Profile, Number]</code>.</li>
+<li><code>CMS.get(profile) =&gt; Approx[Number]</code></li>
+<li>Always returns an upper bound</li>
+<li>We know the distribution on the error</li>
+</ul>
+<p class="notes">Count-Min sketches are a family of memory efficient data structures that allow one to estimate frequency-related properties of the data set, e.g. estimate frequencies of particular elements, find top-K frequent elements, perform range queries (where the goal is to find the sum of frequencies of elements within a range), estimate percentiles.</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              31/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p><img alt="" src="img/count-min-sketch.png" /></p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              32/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p><strong>Write:</strong> Numeric <code>SUM</code> at each location
+$$
+$$
+<strong>Read:</strong> <code>MIN</code> over all keys matching output</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              33/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide has_code">
+          <div class="inner">
+            
+            
+            <section><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">com.twitter.algebird.CMSHasherImplicits._</span>
+<span class="k">def</span> <span class="n">histogram</span><span class="o">(</span><span class="n">sc</span><span class="k">:</span> <span class="kt">SparkContext</span><span class="o">,</span> <span class="n">csv</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">col</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">rdd</span><span class="k">:</span><span class="kt">RDD</span><span class="o">[</span><span class="kt">Row</span><span class="o">]</span> <span class="k">=</span> <span class="nc">SparkUtils</span><span class="o">.</span><span class="n">rddFromCSVFile</span><span class="o">(</span><span class="n">sc</span><span class="o">,</span> <span class="n">csv</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">cmsMonoid</span><span class="k">:</span> <span class="kt">CMSMonoid</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">eps</span> <span class="k">=</span> <span class="mf">0.001</span>
+    <span class="k">val</span> <span class="n">delta</span> <span class="k">=</span> <span class="mi">1</span><span class="n">E</span><span class="o">-</span><span class="mi">10</span>
+    <span class="k">val</span> <span class="n">seed</span> <span class="k">=</span> <span class="mi">1</span>
+    <span class="nc">CMS</span><span class="o">.</span><span class="n">monoid</span><span class="o">[</span><span class="kt">String</span><span class="o">](</span><span class="n">eps</span><span class="o">,</span><span class="n">delta</span><span class="o">,</span><span class="n">seed</span><span class="o">)</span>
+  <span class="o">}</span>
+  <span class="k">val</span> <span class="n">cms</span> <span class="k">=</span> <span class="n">rdd</span>
+    <span class="o">.</span><span class="n">map</span><span class="o">{</span><span class="n">r</span> <span class="k">=&gt;</span> <span class="n">r</span><span class="o">(</span><span class="n">col</span><span class="o">).</span><span class="n">toString</span><span class="o">}</span>
+    <span class="o">.</span><span class="n">map</span><span class="o">{</span><span class="n">cmsMonoid</span><span class="o">.</span><span class="n">create</span><span class="o">(</span><span class="k">_</span><span class="o">)}</span> <span class="c1">// CMSItem monoid</span>
+    <span class="o">.</span><span class="n">reduce</span><span class="o">(</span><span class="k">_</span> <span class="o">++</span> <span class="k">_</span><span class="o">)</span> <span class="c1">// CMSInstance monoid</span>
+  <span class="o">(</span><span class="n">x</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span>  <span class="k">=&gt;</span> <span class="o">{</span> <span class="n">cms</span><span class="o">.</span><span class="n">frequency</span><span class="o">(</span><span class="n">x</span><span class="o">).</span><span class="n">estimate</span> <span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              34/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Probabilistic Data Structures</h1></header>
+            
+            
+            <section><p>$$
+$$</p>
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;border-color:#ccc;margin:0px auto;}
+.tg td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#fff;}
+.tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#f0f0f0;}
+.tg .tg-9hbo{font-weight:bold;vertical-align:top}
+.tg .tg-yw4l{vertical-align:top}
+</style>
+
+<table class="tg">
+ <tr>
+   <th class="tg-9hbo"></th>
+   <th class="tg-9hbo">Exact</th>
+   <th class="tg-9hbo">Use Case</th>
+   <th class="tg-9hbo">Hashes</th>
+   <th class="tg-9hbo">Write Monoid</th>
+   <th class="tg-9hbo" colspan="2">Read Monoid</th>
+ </tr>
+ <tr>
+   <td class="tg-9hbo">Bloom Filter</td>
+   <td class="tg-yw4l">Set</th>
+   <td class="tg-yw4l">Set membership</th>
+   <td class="tg-yw4l">$k$ hashes into $\{0,1\}^m$</td>
+   <td class="tg-yw4l">Boolean OR</td>
+   <td class="tg-yw4l" colspan="2">Boolean AND</td>
+ </tr>
+ <tr>
+   <td class="tg-9hbo">HyperLogLog</td>
+   <td class="tg-yw4l">Set</th>   
+   <td class="tg-yw4l">Set cardinality</th>
+   <td class="tg-yw4l">1 hash into $\mathbb{N}^m$</td>
+   <td class="tg-yw4l">Numeric MAX</td>
+   <td class="tg-yw4l" colspan="2">Harmonic MEAN</td>
+ </tr>
+ <tr>
+   <td class="tg-9hbo">CountMin Sketch</td>
+   <td class="tg-yw4l">Map</th>   
+   <td class="tg-yw4l">Frequency count</th>
+   <td class="tg-yw4l">$k$ hashes into $\mathbb{N}^m$</td>
+   <td class="tg-yw4l">Numeric SUM</td>
+   <td class="tg-yw4l" colspan="2">Numeric MIN</td>
+ </tr>
+</table></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              35/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><ul>
+<li>All use hasing to prepare some array</li>
+<li>Values are ordered (support &lt; and &gt;)</li>
+<li>Resulting monoids are commutative</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              36/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Hashing vs Sampling</h1></header>
+            
+            
+            <section><ul>
+<li>Hash sketches have well-known approximation error distributions and are easy to parallelize.</li>
+<li>Unbiased samples of large data sets have unique sampling error distributions and still require touching every locale.</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              37/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>Algebird</h1></header>
+            
+            
+            <section><ul>
+<li><a href="http://twitter.github.io/algebird">http://twitter.github.io/algebird</a></li>
+<li>Implementations of all the monoids here, plus many more.</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              38/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            
+            <section><p>Monoids have deep connections with</p>
+<ul>
+<li>category theory (Monoids are equivalent to single object categories)</li>
+<li>regular expressions (syntactic monoids, Kleene's algorithm and the Star height problem)</li>
+<li>computational aspects of concurrency (trace and history monoids, Git patch algebra)</li>
+</ul></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              39/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+      <!-- slide source: slides.md -->
+      <div class="slide-wrapper">
+        <div class="slide">
+          <div class="inner">
+            
+            <header><h1>The End</h1></header>
+            
+            
+            <section><p>Special thanks to Oscar Boykin and Judah Jacobson</p></section>
+            
+          </div>
+          <div class="presenter_notes">
+            <header><h1>Presenter Notes</h1></header>
+            <section>
+            
+            </section>
+          </div>
+
+
+          <footer>
+            
+            <aside class="source">
+              Source: <a href="slides.md">slides.md</a>
+            </aside>
+            
+            <aside class="page_number">
+              40/40
+            </aside>
+
+          </footer>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <div id="toc" class="sidebar hidden">
+    <h2>Table of Contents</h2>
+    <table>
+      <caption>Table of Contents</caption>
+      
+      <tr id="toc-row-1">
+        <th><a href="#slide1">-</a></th>
+        <td><a href="#slide1">1</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-2">
+        <th><a href="#slide2">Monoids</a></th>
+        <td><a href="#slide2">2</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-3">
+        <th><a href="#slide3">Associativity</a></th>
+        <td><a href="#slide3">3</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-4">
+        <th><a href="#slide4">-</a></th>
+        <td><a href="#slide4">4</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-5">
+        <th><a href="#slide5">Identity</a></th>
+        <td><a href="#slide5">5</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-6">
+        <th><a href="#slide6">-</a></th>
+        <td><a href="#slide6">6</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-7">
+        <th><a href="#slide7">Basic Monoids</a></th>
+        <td><a href="#slide7">7</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-8">
+        <th><a href="#slide8">-</a></th>
+        <td><a href="#slide8">8</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-9">
+        <th><a href="#slide9">-</a></th>
+        <td><a href="#slide9">9</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-10">
+        <th><a href="#slide10">-</a></th>
+        <td><a href="#slide10">10</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-11">
+        <th><a href="#slide11">What about a mean average?</a></th>
+        <td><a href="#slide11">11</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-12">
+        <th><a href="#slide12">Use a Product Monoid</a></th>
+        <td><a href="#slide12">12</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-13">
+        <th><a href="#slide13">-</a></th>
+        <td><a href="#slide13">13</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-14">
+        <th><a href="#slide14">Product Monoids</a></th>
+        <td><a href="#slide14">14</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-15">
+        <th><a href="#slide15">-</a></th>
+        <td><a href="#slide15">15</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-16">
+        <th><a href="#slide16">Algebird</a></th>
+        <td><a href="#slide16">16</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-17">
+        <th><a href="#slide17">Bloom Filter</a></th>
+        <td><a href="#slide17">17</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-18">
+        <th><a href="#slide18">-</a></th>
+        <td><a href="#slide18">18</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-19">
+        <th><a href="#slide19">-</a></th>
+        <td><a href="#slide19">19</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-20">
+        <th><a href="#slide20">Precision Tuning</a></th>
+        <td><a href="#slide20">20</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-21">
+        <th><a href="#slide21">-</a></th>
+        <td><a href="#slide21">21</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-22">
+        <th><a href="#slide22">Bloom Filters are Monoids</a></th>
+        <td><a href="#slide22">22</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-23">
+        <th><a href="#slide23">-</a></th>
+        <td><a href="#slide23">23</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-24">
+        <th><a href="#slide24">-</a></th>
+        <td><a href="#slide24">24</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-25">
+        <th><a href="#slide25">HyperLogLog</a></th>
+        <td><a href="#slide25">25</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-26">
+        <th><a href="#slide26">-</a></th>
+        <td><a href="#slide26">26</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-27">
+        <th><a href="#slide27"><a href="http://content.research.neustar.biz/blog/hll.html">Link</a></a></th>
+        <td><a href="#slide27">27</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-28">
+        <th><a href="#slide28">-</a></th>
+        <td><a href="#slide28">28</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-29">
+        <th><a href="#slide29">-</a></th>
+        <td><a href="#slide29">29</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-30">
+        <th><a href="#slide30">Count-min Sketch</a></th>
+        <td><a href="#slide30">30</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-31">
+        <th><a href="#slide31">-</a></th>
+        <td><a href="#slide31">31</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-32">
+        <th><a href="#slide32">-</a></th>
+        <td><a href="#slide32">32</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-33">
+        <th><a href="#slide33">-</a></th>
+        <td><a href="#slide33">33</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-34">
+        <th><a href="#slide34">-</a></th>
+        <td><a href="#slide34">34</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-35">
+        <th><a href="#slide35">Probabilistic Data Structures</a></th>
+        <td><a href="#slide35">35</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-36">
+        <th><a href="#slide36">-</a></th>
+        <td><a href="#slide36">36</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-37">
+        <th><a href="#slide37">Hashing vs Sampling</a></th>
+        <td><a href="#slide37">37</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-38">
+        <th><a href="#slide38">Algebird</a></th>
+        <td><a href="#slide38">38</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-39">
+        <th><a href="#slide39">-</a></th>
+        <td><a href="#slide39">39</a></td>
+      </tr>
+      
+      
+      <tr id="toc-row-40">
+        <th><a href="#slide40">The End</a></th>
+        <td><a href="#slide40">40</a></td>
+      </tr>
+      
+      
+    </table>
+  </div>
+  
+  <div id="help" class="sidebar hidden">
+    <h2>Help</h2>
+    <table>
+      <caption>Help</caption>
+      <tr>
+        <th>Table of Contents</th>
+        <td>t</td>
+      </tr>
+      <tr>
+        <th>Exposé</th>
+        <td>ESC</td>
+      </tr>
+      <tr>
+        <th>Full screen slides</th>
+        <td>e</td>
+      </tr>
+      <tr>
+        <th>Presenter View</th>
+        <td>p</td>
+      </tr>
+      <tr>
+        <th>Source Files</th>
+        <td>s</td>
+      </tr>
+      <tr>
+        <th>Slide Numbers</th>
+        <td>n</td>
+      </tr>
+      <tr>
+        <th>Toggle screen blanking</th>
+        <td>b</td>
+      </tr>
+      <tr>
+        <th>Show/hide slide context</th>
+        <td>c</td>
+      </tr>
+      <tr>
+        <th>Notes</th>
+        <td>2</td>
+      </tr>
+      <tr>
+        <th>Help</th>
+        <td>h</td>
+      </tr>
+    </table>
+  </div>
+  <script>main()</script>
+</body>
+</html>
